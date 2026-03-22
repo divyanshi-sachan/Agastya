@@ -1,228 +1,171 @@
-## 🏛 Agastya: A Hybrid AI Platform for Automated Contract Analysis
+# Agastya
 
-### 📌 Overview
-Agastya is a hybrid AI system that bridges the gap between complex legal contracts and non-expert users. It transforms static, often non-digital contracts into structured, interpretable insights using a combination of:
+**Agastya** is a research codebase for **automated contract understanding**: turning long-form agreements into structured, machine-readable signals (e.g., whether specific clause types are present and what the text says). The project is developed in **phases**; **Phase 1** focuses on **transparent, reproducible classical ML** on the public [CUAD](https://www.atticusprojectai.org/cuad) corpus—no transformer or deep-learning models in this phase.
 
-- **Deep Learning (DL)** for semantic understanding of legal language
-- **Machine Learning (ML)** for probabilistic reasoning and risk assessment
+## Contents
 
-At a high level, Agastya performs end-to-end contract analysis, including clause extraction, classification, risk detection, and logical consistency checking.
+- [Problem](#problem)
+- [Approach (Phase 1)](#approach-phase-1)
+- [Results (high level)](#results-high-level)
+- [Folder structure](#folder-structure)
+- [Usage](#usage)
+- [Reproducible setup](#reproducible-setup)
+- [Development practices](#development-practices)
+- [Team](#team)
+- [Acknowledgments](#acknowledgments)
+- [Roadmap (beyond Phase 1)](#roadmap-beyond-phase-1)
 
-### 🚨 Problem Statement
-Legal contracts are often:
+---
 
-- **Difficult to understand** due to dense, domain-specific legal language  
-- **Non-digital or low quality**, e.g. scanned PDFs or handwritten documents  
-- **Risk-prone**, with missing clauses, vague terms, or unfair conditions  
+## Problem
 
-In regions like India, a large fraction of contracts are still non-digital. This creates high information asymmetry between parties and exposes individuals/SMEs to legal and financial risk.
+Legal agreements are long, specialized, and unevenly digitized. Stakeholders without legal training face **high cognitive load** and **information asymmetry** when reviewing terms (payment, termination, liability, assignment, etc.). At machine-learning scale, contract understanding also raises engineering questions: **severe class imbalance** across clause categories, **multiple rows per document**, and **heavy-tailed** text lengths—all of which break naive “shuffle and accuracy” workflows.
 
-Agastya aims to reduce this asymmetry by making contract structure, risks, and inconsistencies transparent and machine-interpretable.
+This repository studies **clause-level prediction** on CUAD: given labeled contract structure, how far can **interpretable bag-of-words models** go when splits and metrics are chosen to match the real constraints of the data?
 
-### 💡 Proposed Solution
-Agastya provides an intelligent pipeline that:
+---
 
-1. **Digitizes contracts** using OCR (from PDFs/images)
-2. **Extracts and segments clauses** into meaningful units
-3. **Classifies clauses** using transformer-based models (e.g. Legal-BERT)
-4. **Detects risks and inconsistencies** (missing / vague / unfair clauses)
-5. **Performs probabilistic reasoning** over clause-level evidence
-6. **Generates an interpretable Smart Report** for end users
+## Approach (Phase 1)
 
-The system is designed to be modular so that components (OCR, clause segmentation, models) can be swapped or improved independently.
+| Layer | Choice | Rationale |
+|--------|--------|-----------|
+| **Data** | CUAD v1 (`master_clauses.csv`, full-contract text, JSON) | Public, well-documented benchmark for contract QA / understanding |
+| **Unit of analysis** | Long-format rows (per contract × clause category) with document-level grouping | Avoids leakage: the same contract must not appear in both train and validation |
+| **Features** | `TfidfVectorizer` (word / character n-grams as configured in the notebook) | Strong baseline for legal surface form; sparse, inspectable weights |
+| **Augmentation** | Optional `log1p` clause length, scaled alongside TF-IDF | EDA-motivated: length is informative without duplicating token counts |
+| **Models** | **Linear SVM** (`LinearSVC`, `class_weight="balanced"`) as the primary model; **Multinomial Naive Bayes** as a fast baseline | Phase 1 mandate: scikit-learn–centric, no deep learning |
+| **Evaluation** | **Macro-F1** (primary under imbalance), plus precision, recall, accuracy, and confusion matrices where appropriate | Aligns with rubric-style reporting and Part 02 EDA conclusions |
 
-### ⚙️ 12-Step System Workflow
-The full end-to-end workflow is:
+Methodology and design decisions are documented in **`progress.md`**, **`agent.md`**, and the Phase 1 notebooks under `notebooks/Phase_1/`.
 
-1. **Upload Contract** (PDF/Image)  
-2. **Document Preprocessing** (denoising, deskewing, basic cleanup)  
-3. **OCR** (text extraction from scanned documents)  
-4. **Clause Segmentation** (split into clause-level units)  
-5. **Clause Classification** (Transformer-based, e.g. Legal-BERT)  
-6. **Risk Detection** (missing / vague / unfair clauses)  
-7. **Risk Scoring** (Low / Medium / High)  
-8. **Logical Consistency Checking** across clauses  
-9. **Clause Relationship Mapping** (dependencies and cross-references)  
-10. **Risk Phrase Highlighting** in text  
-11. **Smart Report Generation** (dashboard + narrative summary)  
-12. **Version Comparison** (advanced feature for contract revisions)  
+---
 
-> **Note**: Not all steps may be fully implemented in code yet; this document describes the *target* system design for Agastya.
+## Results (high level)
 
-### 🧠 System Architecture
+Work to date is **notebook-driven** and intended to be **auditable** (tables, plots, and narrative in each part).
 
-High-level pipeline:
+- **Dataset quality & EDA** ([`Part_02_Dataset_Quality_EDA.ipynb`](notebooks/Phase_1/Part_02_Dataset_Quality_EDA.ipynb)): **510** contracts, **41** categories, **20,910** long-format rows; characterization of **Yes/No vs free-form** fields, **class imbalance**, **clause length** tails, and **filename / text join** edge cases (see **`progress.md`** for the decision checklist).
+- **Feature engineering & baselines** ([`Part_03_Feature_Engineering.ipynb`](notebooks/Phase_1/Part_03_Feature_Engineering.ipynb)): builds sparse **X** and label **y**, **grouped** train/validation split, and an **ablation** of **TF-IDF vs TF-IDF + log-length** on example categories. On the committed split, **LinearSVC** benefits from adding length on average over the ablation pair; **MultinomialNB** is markedly weaker on **macro-F1** in the same setup—**open the notebook** for the full metric table, coefficient plots, and sparsity analysis.
+- **Literature & theory** ([`Part_01_Literature_Review.ipynb`](notebooks/Phase_1/Part_01_Literature_Review.ipynb), [`Part_04_Theoretical_Rigor.ipynb`](notebooks/Phase_1/Part_04_Theoretical_Rigor.ipynb)): positions the work and ties modeling choices to textbook ML arguments.
 
-`Input (PDF/Image) → OCR → Clause Segmentation → DL Model (Legal-BERT) → ML Reasoning (Bayesian Network) → Output (Smart Report)`
+> **Note:** Validation sets are small for rare categories (~102 contracts at a 20% grouped holdout). Treat single-split **macro-F1** as **illustrative**; the notebooks discuss stability (e.g., multiple seeds or grouped CV) for report-grade estimates.
 
-- **Perception Stage** → OCR + segmentation  
-- **Deep Learning Stage** → Legal-BERT-based clause classification & embedding extraction  
-- **Reasoning Stage** → Bayesian Network for probabilistic risk reasoning and consistency checks  
-- **Output Stage** → Risk dashboard, Smart Report, and visualizations  
+---
 
-The architecture is explicitly **hybrid**: deep learning provides rich semantic representations, while probabilistic ML models capture dependencies and legal logic.
+## Folder structure
 
-### 🤖 AI Components
+**In one line:** datasets under `data/`, reproducible Phase 1 analysis under `notebooks/Phase_1/`, future pipeline code under `src/`, static references under `Doc /`, and project metadata at the repo root.
 
-#### 🔹 Deep Learning (DL)
-- **Model**: Legal-BERT (Transformer-based model trained for legal text)  
-- **Tasks**:
-  - Clause classification into predefined legal categories  
-  - Semantic feature extraction (embeddings)  
-- **Outputs**:
-  - Clause type / category  
-  - Semantic embeddings (e.g. 768-dimensional vectors)  
-  - Confidence scores  
-  - Clause-level risk indicators (e.g. vague_timing, missing_party, unfair_term)  
+### At a glance
 
-#### 🔹 Machine Learning (ML)
+| Location | What it is |
+|----------|------------|
+| **`data/CUAD_v1/`** | CUAD v1: `master_clauses.csv`, `CUAD_v1.json`, `full_contract_txt/`, `full_contract_pdf/`, `label_group_xlsx/`, and related assets. |
+| **`notebooks/Phase_1/`** | Runnable notebooks: literature → EDA → feature engineering / baselines → theoretical rigor. |
+| **`src/`** | Python package layout (`ocr`, `segmentation`, `models`, `reasoning`, `reporting`) for later phases; Phase 1 experiments live in notebooks, not here. |
+| **`Doc /`** | PDFs (papers, rubric, etc.); not executed by the pipeline. |
+| **Root (`*.md`, `requirements.txt`)** | `README.md` (this file), `requirements.txt`, `progress.md` (handoff notes), `agent.md` (Phase 1 rules), `project.md` (phase roadmap). |
 
-- **Baseline Model (for ablation/comparison)**  
-  - TF-IDF + SVM  
-  - Used as a simpler baseline for clause classification and risk signals  
+### Tree
 
-- **Probabilistic Model (Core Reasoning Layer)**  
-  - **Bayesian Network** over clause-level features and risks  
-  - **Functions**:
-    - Risk reasoning and aggregation  
-    - Dependency modeling between clauses (e.g. payment ↔ termination)  
-    - Logical consistency checking (detect contradictions or missing dependencies)  
-
-### 🔗 Hybrid DL–ML Integration
-Agastya’s core innovation is the interaction between the DL and ML layers.
-
-**Flow:**
-
-1. DL processes each clause and outputs:
-   - Clause type (e.g. Payment, Termination, Confidentiality)  
-   - Embedding vector  
-   - Local risk indicators  
-2. An **interface layer** converts these outputs into structured evidence variables.  
-3. The **Bayesian Network** consumes these variables for global reasoning and risk scoring.  
-4. The final **risk score** and explanations are surfaced to the user.
-
-**Example**
-
-- **Clause** → "Payment within 30 days"  
-- **DL Output**:  
-  - Type: `Payment`  
-  - Risk: `vague_timing`  
-- **ML Reasoning** (Bayesian Network):  
-  - Payment clause is vague **and** termination clause is highly protective for the other party  
-  - → Overall contract-level **HIGH RISK (e.g. 78%)** for payment-timing related disputes  
-
-### 📊 Dataset
-
-#### Primary Dataset
-- **CUAD (Contract Understanding Atticus Dataset)**  
-  - 13,000+ labeled clauses  
-  - 41 legal categories  
-
-#### Custom Dataset
-- Manually collected contracts (e.g. Indian context)  
-- Used for:
-  - Domain adaptation  
-  - Fine-tuning on local contract styles and clause templates  
-
-### 🧪 Evaluation Strategy
-
-We compare three models:
-
-| Model   | Description                      |
-|--------|----------------------------------|
-| Model A | TF-IDF + SVM (Baseline)         |
-| Model B | Transformer (Legal-BERT)        |
-| Model C | Hybrid (Agastya: DL + Bayesian) |
-
-**Metrics**
-
-- F1-score  
-- Precision / Recall  
-- Accuracy  
-- (Optionally) Calibration and interpretability metrics  
-
-### 📈 Expected Contributions
-
-- **Improved clause classification** using transformer-based models  
-- **Better risk detection** via probabilistic reasoning over clause combinations  
-- **Logical consistency checking** across related clauses  
-- **Interpretable AI outputs** instead of pure black-box predictions  
-
-### 📊 Output Features
-
-The system is expected to produce:
-
-- **Digitized contract** (OCR output)  
-- **Clause categorization** (per-clause labels)  
-- **Risk detection** (flags for missing/vague/unfair clauses)  
-- **Clause dependency insights** (which clauses influence each other)  
-- **Risk heatmap visualization** (clause-level risk scores)  
-- **Smart Report dashboard** (human-readable contract summary and risks)  
-
-### 📁 Project Structure
-
-Target high-level layout:
-
-- **`data/`**: Datasets (CUAD, custom contracts, preprocessed text, splits)  
-- **`src/`**: Source code for the processing pipeline  
-  - `ocr/` – document preprocessing and OCR wrappers  
-  - `segmentation/` – clause segmentation and cleaning  
-  - `models/` – DL models (Legal-BERT, TF-IDF+SVM)  
-  - `reasoning/` – Bayesian Network and risk reasoning logic  
-  - `reporting/` – Smart Report and visualization utilities  
-- **`models/`**: Saved model weights and checkpoints  
-- **`notebooks/`**: Exploration, EDA, and experiment notebooks  
-- **`requirements.txt`**: Python dependencies  
-- **`README.md`**: Project documentation (this file)  
-
-
-### 🛠 Getting Started
-
-> This section assumes a Python environment (e.g. 3.9+). Update commands as needed once the codebase is fully implemented.
-
-1. **Clone the repository**
-
-```bash
-git clone <your-repo-url>.git
-cd agastya
+```
+Agastya/
+├── data/CUAD_v1/
+├── notebooks/
+│   └── Phase_1/            # Part_01 … Part_04 notebooks
+├── src/
+│   ├── ocr/
+│   ├── segmentation/
+│   ├── models/
+│   ├── reasoning/
+│   └── reporting/
+├── Doc /                   # Reference PDFs
+├── README.md
+└── requirements.txt
 ```
 
-2. **Create and activate a virtual environment (recommended)**
+**Phase 1** logic currently lives in **`notebooks/Phase_1/`**. **`src/`** is reserved for modular pipeline code (OCR, segmentation, hybrid reasoning) so unfinished modules stay separate from the graded, notebook-based analysis.
+
+---
+
+## Usage
+
+### Run the analysis notebooks
+
+From the repository root (after environment setup below):
 
 ```bash
+jupyter lab
+```
+
+Recommended order:
+
+1. `notebooks/Phase_1/Part_01_Literature_Review.ipynb`
+2. `notebooks/Phase_1/Part_02_Dataset_Quality_EDA.ipynb`
+3. `notebooks/Phase_1/Part_03_Feature_Engineering.ipynb`
+4. `notebooks/Phase_1/Part_04_Theoretical_Rigor.ipynb`
+
+Paths in notebooks assume the **working directory is the repo root** so `data/CUAD_v1/...` resolves correctly.
+
+### Python package (future / optional)
+
+When pipeline modules are implemented under `src/`, install in editable mode:
+
+```bash
+pip install -e .
+```
+
+*(Add a minimal `pyproject.toml` or `setup.cfg` when you are ready to expose `agastya` as an installable package.)*
+
+---
+
+## Reproducible setup
+
+**Prerequisites**
+
+- **Python 3.10+** recommended (matches current `scikit-learn` / `pandas` stacks).
+- **Git** for version-aligned clones.
+
+**Steps**
+
+```bash
+git clone <your-repository-url>.git
+cd Agastya
+
 python -m venv .venv
-source .venv/bin/activate  # on Windows: .venv\Scripts\activate
-```
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
-3. **Install dependencies**
-
-```bash
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-4. **Run experiments / pipeline**
+**Data:** This repository includes CUAD v1 under `data/CUAD_v1/` so notebooks run without a separate download step. If you mirror the project without large files, obtain CUAD from the [Atticus Project](https://www.atticusprojectai.org/cuad) and place it at the same paths.
 
-- (To be updated) Example:
+**Determinism:** Notebooks use explicit **`random_state`** where randomness enters (e.g., splits, linear SVM). Re-run cells top-to-bottom after pulling changes.
 
-```bash
-python -m src.pipeline.run_contract_analysis --input path/to/contract.pdf --output reports/contract_001.json
-```
+---
 
-Fill this section in as the CLI or notebooks for the project solidify.
+## Development practices
 
-### 🚀 Future Work
+- **Commits:** Prefer **small, coherent commits** with **clear messages** (e.g., [Conventional Commits](https://www.conventionalcommits.org/): `feat(notebooks): add grouped split for Part 03`, `docs: expand README results section`). This makes progress visible to reviewers and matches “steady development” expectations.
+- **Phase boundaries:** **Phase 1** — no transformers/BERT for modeling; see **`project.md`** / **`agent.md`**. Later phases may add deep learning and hybrid reasoning on top of this baseline.
+- **Housekeeping:** Virtual environments (`.venv/`) and Jupyter checkpoints are **gitignored**; keep generated artifacts out of version control unless they are deliberately released.
 
-- Advanced risk prediction models (e.g. graph neural networks over clause graphs)  
-- Richer **explainable AI** (highlight not only risky phrases, but also reasoning paths in the Bayesian Network)  
-- Contract comparison system (e.g. highlight differences between two versions or against a standard template)  
-- Web-based deployment and interactive dashboard for non-technical users  
+---
 
-### 👥 Team
+## Team
 
-- **Team Agastya**  
-  - Divyanshi Sachan  
-  - Subham Mahapatra  
+- Divyanshi Sachan  
+- Subham Mahapatra  
 
-### 🧠 Key Idea
-Agastya combines the strengths of **Deep Learning** (for understanding legal language) and **Machine Learning / Probabilistic Reasoning** (for modeling dependencies and uncertainty) to build an **interpretable and intelligent legal AI system** for automated contract analysis.
+---
 
+## Acknowledgments
+
+Analysis uses the **Contract Understanding Atticus Dataset (CUAD)**. Cite the dataset and license terms from the official CUAD release when publishing or redistributing.
+
+---
+
+## Roadmap (beyond Phase 1)
+
+Longer-term goals (not necessarily implemented in this tree) include OCR-backed ingestion, clause segmentation, transformer-based encoders, probabilistic reasoning over clause dependencies, and an end-user reporting layer. **Phase 1** deliberately grounds the project in **reproducible classical ML** and rigorous EDA before adding those components.
