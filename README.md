@@ -1,19 +1,20 @@
 # Agastya
 
-**Agastya** is a research codebase for **automated contract understanding**: turning long-form agreements into structured, machine-readable signals (e.g., whether specific clause types are present and what the text says). The project is developed in **phases**; **Phase 1** focuses on **transparent, reproducible classical ML** on the public [CUAD](https://www.atticusprojectai.org/cuad) corpus—no transformer or deep-learning models in this phase.
+**Agastya** is a research codebase for **automated contract understanding**: turning long-form agreements into structured, machine-readable signals (e.g., whether specific clause types are present and what the text says). The project is developed in **phases**: **Phase 1** focuses on **transparent, reproducible classical ML** baselines, while **Phase 2** introduces **Deep Learning (Transformers)** for state-of-the-art performance.
 
 ## Contents
 
 - [Problem](#problem)
 - [Approach (Phase 1)](#approach-phase-1)
+- [Approach (Phase 2)](#approach-phase-2)
 - [Results (high level)](#results-high-level)
 - [Folder structure](#folder-structure)
-- [Usage](#usage)
+- [Usage (Phase 2)](#usage-phase-2)
 - [Reproducible setup](#reproducible-setup)
 - [Development practices](#development-practices)
 - [Team](#team)
 - [Acknowledgments](#acknowledgments)
-- [Roadmap (beyond Phase 1)](#roadmap-beyond-phase-1)
+- [Roadmap](#roadmap)
 
 ---
 
@@ -40,15 +41,41 @@ Methodology and design decisions are documented in **`progress.md`**, **`agent.m
 
 ---
 
+## Approach (Phase 2)
+
+| Layer | Choice | Rationale |
+|--------|--------|-----------|
+| **Data** | Processed CUAD v1 (`train.csv`, `val.csv`, `test.csv`) | Grouped splits to ensure document-level isolation and consistent evaluation. |
+| **Model** | **Legal-BERT** (backbone: `nlpaueb/legal-bert-base-uncased`) | Domain-specific pre-training significantly improves legal text comprehension. |
+| **Architecture** | BERT with Length-Aware Linear Head | Combines transformer representations with clause length features (normalized log-length). |
+| **Preprocessing** | Sliding window segmentation (max 128-512 tokens) | Handles long contracts by breaking them into manageable, overlapping spans. |
+| **Training** | PyTorch + HuggingFace Transformers | Standardized pipeline for fine-tuning, using `AdamW` and weighted loss for imbalance. |
+| **Evaluator** | Macro-F1 (primary), Confusion Matrix | Rigorous per-class testing to avoid accuracy bias on rare clause types. |
+
+Phase 2 implementation details and experiments are found in `src/phase2/` and `notebooks/Phase_2/`.
+
+---
+
 ## Results (high level)
 
 Work to date is **notebook-driven** and intended to be **auditable** (tables, plots, and narrative in each part).
 
-- **Dataset quality & EDA** ([`Part_02_Dataset_Quality_EDA.ipynb`](notebooks/Phase_1/Part_02_Dataset_Quality_EDA.ipynb)): **510** contracts, **41** categories, **20,910** long-format rows; characterization of **Yes/No vs free-form** fields, **class imbalance**, **clause length** tails, and **filename / text join** edge cases (see **`progress.md`** for the decision checklist).
-- **Feature engineering & baselines** ([`Part_03_Feature_Engineering.ipynb`](notebooks/Phase_1/Part_03_Feature_Engineering.ipynb)): builds sparse **X** and label **y**, **grouped** train/validation split, and an **ablation** of **TF-IDF vs TF-IDF + log-length** on example categories. On the committed split, **LinearSVC** benefits from adding length on average over the ablation pair; **MultinomialNB** is markedly weaker on **macro-F1** in the same setup—**open the notebook** for the full metric table, coefficient plots, and sparsity analysis.
-- **Literature & theory** ([`Part_01_Literature_Review.ipynb`](notebooks/Phase_1/Part_01_Literature_Review.ipynb), [`Part_04_Theoretical_Rigor.ipynb`](notebooks/Phase_1/Part_04_Theoretical_Rigor.ipynb)): positions the work and ties modeling choices to textbook ML arguments.
+### Phase 1: Classical Baselines
+- **Dataset quality & EDA** ([`Part_02_Dataset_Quality_EDA.ipynb`](notebooks/Phase_1/Part_02_Dataset_Quality_EDA.ipynb)): **510** contracts, **41** categories; identified severe class imbalance and extreme text lengths.
+- **Feature engineering & baselines** ([`Part_03_Feature_Engineering.ipynb`](notebooks/Phase_1/Part_03_Feature_Engineering.ipynb)): **LinearSVC** reached competitive baselines (~0.5-0.6 Macro-F1 on selected categories) using TF-IDF and character n-grams.
 
-> **Note:** Validation sets are small for rare categories (~102 contracts at a 20% grouped holdout). Treat single-split **macro-F1** as **illustrative**; the notebooks discuss stability (e.g., multiple seeds or grouped CV) for report-grade estimates.
+### Phase 2: Deep Learning (Legal-BERT)
+The transition to deep learning yielded a significant performance jump by leveraging context-aware embeddings.
+
+| Metric | Result | Notes |
+|--------|--------|-------|
+| **Macro-F1** | **0.746** | Strong performance across heterogeneous legal clauses. |
+| **Accuracy** | **0.824** | Good overall classification on the held-out test set. |
+| **Validation Loss** | **18.68** | Stable convergence over multiple training epochs. |
+
+- **Fine-Tuning** ([`07_Training_Bert.ipynb`](notebooks/Phase_2/07_Training_Bert.ipynb)): Achieved convergence with `Legal-BERT` using 128-token windows and document-level splits.
+- **Evaluation** ([`08_evaluation.ipynb`](notebooks/Phase_2/08_evaluation.ipynb)): Detailed per-class analysis (refer to `phase2_results/results.json` and the `confusion_matrix.png`).
+- **Interpretability** ([`09_interpretability.ipynb`](notebooks/Phase_2/09_interpretability.ipynb)): Initial exploration of attention weights and feature salience for legal entities.
 
 ---
 
@@ -62,7 +89,13 @@ Work to date is **notebook-driven** and intended to be **auditable** (tables, pl
 |----------|------------|
 | **`data/CUAD_v1/`** | CUAD v1: `master_clauses.csv`, `CUAD_v1.json`, `full_contract_txt/`, `full_contract_pdf/`, `label_group_xlsx/`, and related assets. |
 | **`notebooks/Phase_1/`** | Runnable notebooks: literature → EDA → feature engineering / baselines → theoretical rigor. |
-| **`src/`** | Python package layout (`ocr`, `segmentation`, `models`, `reasoning`, `reporting`) for later phases; Phase 1 experiments live in notebooks, not here. |
+| **`notebooks/Phase_2/`** | OCR → segmentation → preprocessing → baselines → transformers → multitask → evaluation → ablations → interpretability. |
+| **`src/`** | Phase 1 reserved layout (`ocr`, …, `reporting`) at top level; **Phase 2 code** lives under **`src/phase2/`** (OCR, segmentation, data loaders, models, training, evaluation, interpretability, utils). |
+| **`configs/`** | YAML defaults for data, model, and training (`*_config.yaml`). |
+| **`scripts/`** | CLI entry points: `train.py`, `evaluate.py`, `run_ocr.py`. |
+| **`data/raw/`**, **`data/interim/`**, **`data/processed/`** | Phase 2 ingestion layout (CUAD or scanned PDFs → OCR/segments → `train.csv` / `val.csv` / `test.csv`). Existing CUAD v1 copy remains at **`data/CUAD_v1/`** for Phase 1. |
+| **`results/phase2/`** | Generated plots, checkpoints, and logs (keep large binaries out of git unless intentional). |
+| **`reports/phase2/`** | Write-ups: methodology, experiments, results, ablations, conclusions. |
 | **`Doc /`** | PDFs (papers, rubric, etc.); not executed by the pipeline. |
 | **Root (`*.md`, `requirements.txt`)** | `README.md` (this file), `requirements.txt`, `progress.md` (handoff notes), `agent.md` (Phase 1 rules), `project.md` (phase roadmap). |
 
@@ -70,11 +103,19 @@ Work to date is **notebook-driven** and intended to be **auditable** (tables, pl
 
 ```
 Agastya/
+├── configs/                # Phase 2 YAML (model / training / data)
 ├── data/CUAD_v1/
+├── data/                   # CUAD_v1 (Phase 1) + raw/interim/processed (Phase 2)
 ├── notebooks/
-│   └── Phase_1/            # Part_01 … Part_04 notebooks
+│   ├── Phase_1/            # Part_01 … Part_05 notebooks
+│   └── Phase_2/            # 01 … 09 Phase 2 notebooks
+├── reports/phase2/
+├── results/phase2/
+├── scripts/                # train, evaluate, run_ocr
 ├── src/
-│   ├── ocr/
+│   ├── __init__.py
+│   ├── ocr/                # reserved / future shared layout
+│   ├── phase2/             # Phase 2 package
 │   ├── segmentation/
 │   ├── models/
 │   ├── reasoning/
@@ -84,38 +125,80 @@ Agastya/
 └── requirements.txt
 ```
 
-**Phase 1** logic currently lives in **`notebooks/Phase_1/`**. **`src/`** is reserved for modular pipeline code (OCR, segmentation, hybrid reasoning) so unfinished modules stay separate from the graded, notebook-based analysis.
+**Phase 1** logic currently lives in **`notebooks/Phase_1/`**. **`src/phase2/`** is the scaffold for modular Phase 2 code (OCR through interpretability); Phase 1 notebooks remain the source of truth for classical baselines.
+
+### Phase 2 layout
+
+Runnable narrative and experiments: **`notebooks/Phase_2/`** (`01`–`09`). Library code: **`src/phase2/`**. Paths in configs default to **`data/processed/*.csv`** and **`results/phase2/`**; adjust **`configs/data_config.yaml`** if you symlink CUAD from **`data/CUAD_v1/`** into **`data/raw/CUAD/`**.
+
+```
+Agastya/
+├── configs/
+│   ├── model_config.yaml
+│   ├── training_config.yaml
+│   └── data_config.yaml
+├── data/
+│   ├── CUAD_v1/              # Phase 1 copy (unchanged)
+│   ├── raw/
+│   │   ├── CUAD/
+│   │   └── scanned_contracts/
+│   ├── interim/
+│   │   ├── ocr_outputs/
+│   │   └── segmented_clauses/
+│   └── processed/
+│       ├── train.csv
+│       ├── val.csv
+│       └── test.csv
+├── notebooks/
+│   ├── Phase_1/
+│   └── Phase_2/              # 01_ocr_pipeline … 09_interpretability
+├── reports/
+│   └── phase2/
+├── results/
+│   └── phase2/
+│       ├── plots/
+│       ├── models/
+│       └── logs/
+├── scripts/
+│   ├── train.py
+│   ├── evaluate.py
+│   └── run_ocr.py
+└── src/
+    └── phase2/
+        ├── ocr/
+        ├── segmentation/
+        ├── data/
+        ├── models/
+        ├── training/
+        ├── evaluation/
+        ├── interpretability/
+        └── utils/
+```
 
 ---
 
-## Usage
+## Usage (Phase 2)
 
-### Run the analysis notebooks
+### Running the BERT Pipeline
 
-From the repository root (after environment setup below):
+1. **Preprocessing:** Segment CUAD data into training/val/test splits.
+   ```bash
+   python scripts/run_ocr.py  # If starting from raw PDFs
+   # Or use the preprocessing notebook 05_data_preprocessing.ipynb
+   ```
 
-```bash
-jupyter lab
-```
+2. **Training:** Fine-tune Legal-BERT on the processed segments.
+   ```bash
+   python scripts/train.py --config configs/training_config.yaml
+   ```
 
-Recommended order:
+3. **Evaluation:** Generate metrics and plots for the test set.
+   ```bash
+   python scripts/evaluate.py --model_path phase2_results/legal_bert_phase2.pt
+   ```
 
-1. `notebooks/Phase_1/Part_01_Literature_Review.ipynb`
-2. `notebooks/Phase_1/Part_02_Dataset_Quality_EDA.ipynb`
-3. `notebooks/Phase_1/Part_03_Feature_Engineering.ipynb`
-4. `notebooks/Phase_1/Part_04_Theoretical_Rigor.ipynb`
-
-Paths in notebooks assume the **working directory is the repo root** so `data/CUAD_v1/...` resolves correctly.
-
-### Python package (future / optional)
-
-When pipeline modules are implemented under `src/`, install in editable mode:
-
-```bash
-pip install -e .
-```
-
-*(Add a minimal `pyproject.toml` or `setup.cfg` when you are ready to expose `agastya` as an installable package.)*
+### Notebook Exploration
+The **`notebooks/Phase_2/`** directory contains the full developmental narrative, from **01_architectural_logic** to **08_evaluation**.
 
 ---
 
@@ -166,6 +249,8 @@ Analysis uses the **Contract Understanding Atticus Dataset (CUAD)**. Cite the da
 
 ---
 
-## Roadmap (beyond Phase 1)
+## Roadmap
 
-Longer-term goals (not necessarily implemented in this tree) include OCR-backed ingestion, clause segmentation, transformer-based encoders, probabilistic reasoning over clause dependencies, and an end-user reporting layer. **Phase 1** deliberately grounds the project in **reproducible classical ML** and rigorous EDA before adding those components.
+- **Phase 1 (Complete):** Classical ML baselines (SVM/NB) on CUAD.
+- **Phase 2 (Complete):** Deep Learning transition with Domain-Specific Transformers (Legal-BERT).
+- **Phase 3 (Next):** Hybrid reasoning models combining structured extraction with Large Language Model (LLM) verification and risk explanation.

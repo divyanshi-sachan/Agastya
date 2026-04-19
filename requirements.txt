@@ -34,3 +34,7 @@ notebook>=7.0.0
 
 # --- CUAD / Excel label reports (optional EDA on .xlsx) ---
 openpyxl>=3.1.0
+
+# --- Phase 2 (configs + interpretability) ---
+PyYAML>=6.0.0
+shap>=0.44.0
