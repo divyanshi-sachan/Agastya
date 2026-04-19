@@ -11,3 +11,7 @@ build/
 .ruff_cache/
 .DS_Store
 .ipynb_checkpoints/
+agastya_env/
+# Colab Phase 2 export (large); unzip here
+phase2_results/
+results/phase2/models/*.pt
