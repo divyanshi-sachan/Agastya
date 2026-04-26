@@ -1,0 +1,18 @@
+{
+  "task": "contract_risk_level_3way_ensemble",
+  "model": "Legal-BERT [CLS] embeddings + SVM(RBF) + Platt calibration",
+  "n_contracts": 51,
+  "macro_f1": 0.5792663476874004,
+  "accuracy": 0.6666666666666666,
+  "precision": 0.5802469135802469,
+  "recall": 0.6078037904124861,
+  "ground_truth": "Derived from expanded Phase 2 test labels (26-label type-scoring, 4-type risk score).",
+  "improvements": [
+    "Expanded label mapping: 6 \u2192 26 CUAD labels feed BN evidence",
+    "Top-3 multi-label BERT predictions (vs argmax only)",
+    "Evidence threshold lowered: 0.5 \u2192 0.25",
+    "BN retrained on expanded labels (100-iter EM)",
+    "Ground truth aligned with BN scoring logic",
+    "Legal-BERT [CLS] embedding extractor + SVM(RBF) risk head"
+  ]
+}

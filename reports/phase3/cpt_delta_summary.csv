@@ -1,0 +1,10 @@
+variable,max_abs_delta,mean_abs_delta
+Cross_Clause_Conflict,0.8,0.3927272727272727
+Contract_Risk_Level,0.7442238267148014,0.4314079422382671
+Liability_Or_Confidentiality_Risky,0.65,0.4125
+Payment_Or_Termination_Risky,0.6,0.3875
+Has_Dispute_Resolution_Clause,0.3799019607843137,0.3799019607843137
+Has_Liability_Clause,0.1995098039215687,0.19950980392156867
+Has_Termination_Clause,0.178921568627451,0.17892156862745098
+Has_Payment_Clause,0.1392156862745098,0.13921568627450978
+Has_Confidentiality_Clause,0.006372549019607876,0.006372549019607848

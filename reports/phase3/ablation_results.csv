@@ -1,0 +1,4 @@
+Configuration,Macro-F1,Accuracy,Precision,Recall,Status,Source,EvidencePath,Notes
+ML_Only,0.7187,0.8,0.7454,0.723,available,Phase 1 evaluation artifact,/Users/subhammahapatra/Downloads/agastya/results/phase1/results.json,Loaded from Phase 1 results artifact.
+DL_Only,0.7463207023622066,0.8236173393124065,,,available,Phase 2 evaluation artifact,/Users/subhammahapatra/Downloads/agastya/results/phase2/results.json,Precision/Recall unavailable in current Phase 2 artifact.
+Hybrid,0.5792663476874004,0.6666666666666666,0.5802469135802469,0.6078037904124861,available,Phase 3 hybrid evaluation artifact,/Users/subhammahapatra/Downloads/agastya/reports/phase3/hybrid_eval.json,Strictly loaded from generated hybrid_eval.json.

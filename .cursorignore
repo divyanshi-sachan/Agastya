@@ -1,0 +1,33 @@
+.git/
+.DS_Store
+**/.DS_Store
+
+# Python virtual envs and caches
+.venv/
+venv/
+agastya_env/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Build/distribution artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Large/generated experiment outputs
+phase2_results/
+results/phase2/models/*.pt
+
+# Common logs/temp
+*.log
+tmp/
+temp/

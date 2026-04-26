@@ -1,0 +1,8 @@
+{
+  "task": "phase1_clause_classification",
+  "macro_f1": 0.7187,
+  "accuracy": 0.8,
+  "precision": 0.7454,
+  "recall": 0.723,
+  "notes": "Loaded from Part_05_Model_Training_and_Evaluation.ipynb (selected SVM baseline)."
+}

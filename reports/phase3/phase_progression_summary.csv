@@ -1,0 +1,4 @@
+Phase,Core Model,Task,Macro-F1,Strength,MetricStatus
+Phase 1,LinearSVC + TF-IDF,Per-clause type (41 CUAD categories),0.7187,"Transparent, interpretable baseline",reported
+Phase 2,Legal-BERT (nlpaueb/legal-bert-base-uncased),Per-clause type (41 CUAD categories),0.7463207023622066,Context-aware clause encoding (+0.027 vs Phase 1),reported
+Phase 3,Legal-BERT + Bayesian Network (pgmpy),"Contract-level risk (Low/Med/High, n=51 contracts)",0.5792663476874004,Neuro-symbolic reasoning + probabilistic risk traceability,from_hybrid_eval_artifact

@@ -1,0 +1,26 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.ipynb_checkpoints/
+agastya_env/
+# Colab Phase 2 export (large); unzip here
+phase2_results/
+results/phase2/models/*.pt
+.DS_Store
+.EasyOCR/
+results/phase3/models/*.pkl
+# Large training artifacts
+results/phase2/models/*.pt
+results/phase3/models/*.pt
+results/phase3/models/*.npz
+results/phase3/*.pkl
+results/phase3/*.npz
